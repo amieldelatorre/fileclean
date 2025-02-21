@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
@@ -32,6 +33,7 @@ func GenerateFs(numFiles int, numDirs int) (*GeneratedFs, error) {
 			return nil, err
 		}
 		files = append(files, filepath.Base(file.Name()))
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	dirs := []string{}

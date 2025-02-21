@@ -1,4 +1,5 @@
 fileclean
+fileclean.exe
 _testdata*
 *.tar.gz
 *.zip

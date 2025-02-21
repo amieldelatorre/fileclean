@@ -1,0 +1,4 @@
+fileclean
+_testdata*
+*.tar.gz
+*.zip

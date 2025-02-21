@@ -1,0 +1,121 @@
+name: New Tag Created
+
+on:
+  push:
+    tags:
+      - "**"
+
+jobs:
+  test_on_tag:
+    uses: ./.github/workflows/push.yaml
+  
+  create_release_draft:
+    runs-on: ubuntu-latest
+    needs: [ test_on_tag ]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Create release draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --title="$TAG" --draft
+
+  create_linux_amd64_executable:
+    needs: [ create_release_draft ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Create and upload executable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          go build -o fileclean .
+          tar -czvf fileclean_linux_amd64.tar.gz fileclean
+          gh release upload "$TAG" --clobber fileclean_linux_amd64.tar.gz
+
+  create_windows_amd64_executable:
+    needs: [ create_release_draft ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Create and upload executable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          go build -o fileclean .
+          Compress-Archive -Path fileclean_windows_amd64.exe -DestinationPath fileclean_windows_amd64.zip
+          gh release upload "$env:TAG" --clobber fileclean_windows_amd64.zip
+  
+  create_macos_arm64_executable:
+    needs: [ create_release_draft ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Create and upload executable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          go build -o fileclean .
+          tar -czvf fileclean.tar.gz fileclean
+          gh release upload "$TAG" --clobber fileclean_darwin_arm64.tar.gz
+  
+  
+  publish-release:
+    needs: [ create_linux_amd64_executable, create_windows_amd64_executable, create_macos_arm64_executable ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false
+    
+        
+    
+    
+    
+    

@@ -33,6 +33,12 @@ func GenerateFs(numFiles int, numDirs int) (*GeneratedFs, error) {
 			return nil, err
 		}
 		files = append(files, filepath.Base(file.Name()))
+
+		err = file.Close()
+		if err != nil {
+			return nil, err
+		}
+		
 		time.Sleep(time.Millisecond * 100)
 	}
 

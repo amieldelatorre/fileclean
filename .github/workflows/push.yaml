@@ -31,7 +31,7 @@ jobs:
 
       - name: Build Api Binary
         run: |
-          go build -o api ./cmd/api/
+          go build -o fileclean .
           
       - name: Run Tests
         run: |

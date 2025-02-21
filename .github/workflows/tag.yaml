@@ -50,7 +50,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: amieldelatorre/fileclean:${{ github.ref_name }}
+          tags: ghcr.io/amieldelatorre/fileclean:${{ github.ref_name }}
   
   
   create_linux_amd64_executable:
@@ -98,7 +98,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           go build -o fileclean .
-          Compress-Archive -Path fileclean_windows_amd64.exe -DestinationPath fileclean_windows_amd64.zip
+          Compress-Archive -Path fileclean.exe -DestinationPath fileclean_windows_amd64.zip
           gh release upload "$env:TAG" --clobber fileclean_windows_amd64.zip
   
   create_macos_arm64_executable:

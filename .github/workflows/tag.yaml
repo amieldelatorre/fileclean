@@ -44,6 +44,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: amieldelatorre/fileclean:${{ github.ref_name }}
   
   
   create_linux_amd64_executable:
@@ -72,7 +79,7 @@ jobs:
 
   create_windows_amd64_executable:
     needs: [ create_release_draft ]
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
 
@@ -96,7 +103,7 @@ jobs:
   
   create_macos_arm64_executable:
     needs: [ create_release_draft ]
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     permissions:
       contents: write
 
@@ -115,7 +122,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           go build -o fileclean .
-          tar -czvf fileclean.tar.gz fileclean
+          tar -czvf fileclean_darwin_arm64.tar.gz fileclean
           gh release upload "$TAG" --clobber fileclean_darwin_arm64.tar.gz
   
   

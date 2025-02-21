@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -26,7 +27,7 @@ func GenerateFs(numFiles int, numDirs int) (*GeneratedFs, error) {
 
 	files := []string{}
 	for i := 0; i < numFiles; i++ {
-		file, err := os.CreateTemp(testDataDir, "content")
+		file, err := os.CreateTemp(testDataDir, fmt.Sprintf("file%d_", i))
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +36,7 @@ func GenerateFs(numFiles int, numDirs int) (*GeneratedFs, error) {
 
 	dirs := []string{}
 	for i := 0; i < numDirs; i++ {
-		dir, err := os.MkdirTemp(testDataDir, "subdir")
+		dir, err := os.MkdirTemp(testDataDir, fmt.Sprintf("dir%d_", i))
 		if err != nil {
 			return nil, err
 		}

@@ -5,6 +5,10 @@ on:
     tags:
       - "**"
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   test_on_tag:
     uses: ./.github/workflows/push.yaml
@@ -28,6 +32,12 @@ jobs:
   create_docker_image:
     needs: [ create_release_draft ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4 
@@ -45,12 +55,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
       - name: Docker Build and Push
         uses: docker/build-push-action@v5
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/amieldelatorre/fileclean:${{ github.ref_name }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+      
+      - name: Generate Artifact Attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.metadata.outputs.digest }}
+          push-to-registry: true
   
   
   create_linux_amd64_executable:
@@ -97,7 +121,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          go build -o fileclean .
+          go build -o fileclean.exe .
           Compress-Archive -Path fileclean.exe -DestinationPath fileclean_windows_amd64.zip
           gh release upload "$env:TAG" --clobber fileclean_windows_amd64.zip
   

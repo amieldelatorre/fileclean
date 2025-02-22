@@ -7,7 +7,7 @@ import (
 )
 
 // Version should not be edited directly, will be updated by CI pipeline
-const version = "dev"
+const version = "0.0.2"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",

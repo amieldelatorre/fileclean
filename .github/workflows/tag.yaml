@@ -40,7 +40,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v4
+
+      - name: Update Version Command
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          sed -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" /var/version.go
+          git checkout "$VERSION"
+          git add ./cmd/version.go
+          git commit -m "patch(version): update version command with value $TAG [skip ci]"
+          git push
 
       - name: Setup Docker QEMU Emulation
         uses: docker/setup-qemu-action@v3
@@ -98,6 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          sed -i -E "s/^(const version =) (.*)/\1 \"${TAG}\"/g" /var/version.go
           go build -o fileclean .
           tar -czvf fileclean_linux_amd64.tar.gz fileclean
           gh release upload "$TAG" --clobber fileclean_linux_amd64.tar.gz
@@ -122,6 +133,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          (get-content .\cmd\version.go) -replace "^(const version =) (.*)","`${1} `"$env:TAG`"" | set-content .\cmd\version.go
           go build -o fileclean.exe .
           Compress-Archive -Path fileclean.exe -DestinationPath fileclean_windows_amd64.zip
           gh release upload "$env:TAG" --clobber fileclean_windows_amd64.zip
@@ -146,6 +158,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          sed -i '' -E "s/^(const version =) (.*)/\1 \"${TAG}\"/g" ./cmd/version.go
           go build -o fileclean .
           tar -czvf fileclean_darwin_arm64.tar.gz fileclean
           gh release upload "$TAG" --clobber fileclean_darwin_arm64.tar.gz

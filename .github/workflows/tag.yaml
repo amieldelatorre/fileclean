@@ -30,6 +30,7 @@ jobs:
           sed -i -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" ./cmd/version.go
           git checkout -b "temp" "$VERSION"
           git config --global user.name "actions-update-version"
+          git config --global user.email "actions@bot"
           git add ./cmd/version.go
           git commit -m "patch(version): update version command with value $TAG [skip ci]"
           git tag -a "$VERSION" -m $(git tag -l --format='%(contents)' "$VERSION")

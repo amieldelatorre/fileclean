@@ -22,7 +22,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      - name: Update Version Command
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          sed -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" ./cmd/version.go
+          git checkout "$VERSION"
+          git add ./cmd/version.go
+          git commit -m "patch(version): update version command with value $TAG [skip ci]"
+          git push     
+
       - name: Create release draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,16 +51,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Update Version Command
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          sed -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" /var/version.go
-          git checkout "$VERSION"
-          git add ./cmd/version.go
-          git commit -m "patch(version): update version command with value $TAG [skip ci]"
-          git push
 
       - name: Setup Docker QEMU Emulation
         uses: docker/setup-qemu-action@v3
@@ -108,7 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          sed -i -E "s/^(const version =) (.*)/\1 \"${TAG}\"/g" /var/version.go
+          sed -i -E "s/^(const version =) (.*)/\1 \"${TAG}\"/g" ./cmd/version.go
           go build -o fileclean .
           tar -czvf fileclean_linux_amd64.tar.gz fileclean
           gh release upload "$TAG" --clobber fileclean_linux_amd64.tar.gz

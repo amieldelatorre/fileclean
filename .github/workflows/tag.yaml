@@ -35,7 +35,7 @@ jobs:
           git commit -m "patch(version): update version command with value $VERSION [skip ci]"
           message=$(git tag -l --format='%(contents)' "$VERSION")
           git tag --delete "$VERSION" && git push origin --delete "$VERSION"
-          git tag -a "$VERSION" -m "$message"
+          git tag -a "$VERSION" -m "$message [skip ci]"
           git push origin "$VERSION"
 
       - name: Create release draft

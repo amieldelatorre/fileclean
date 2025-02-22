@@ -34,7 +34,7 @@ jobs:
           git add ./cmd/version.go
           git commit -m "patch(version): update version command with value $VERSION [skip ci]"
           message=$(git tag -l --format='%(contents)' "$VERSION")
-          git push origin --delete "$VERSION"
+          git tag --delete "$VERSION" && git push origin --delete "$VERSION"
           git tag -a "$VERSION" -m "$message"
           git push origin "$VERSION"
 
@@ -75,6 +75,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Update Version Command
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          sed -i -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" ./cmd/version.go
 
       - name: Docker Build and Push
         uses: docker/build-push-action@v5

@@ -34,8 +34,8 @@ jobs:
           git add ./cmd/version.go
           git commit -m "patch(version): update version command with value $VERSION [skip ci]"
           message=$(git tag -l --format='%(contents)' "$VERSION")
-          git tag -a "$VERSION" -m "$message"
           git push origin --delete "$VERSION"
+          git tag -a "$VERSION" -m "$message"
           git push origin "$VERSION"
 
       - name: Create release draft

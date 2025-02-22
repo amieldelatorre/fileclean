@@ -27,8 +27,9 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          sed -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" ./cmd/version.go
+          sed -i -E "s/^(const version =) (.*)/\1 \"${VERSION}\"/g" ./cmd/version.go
           git checkout "$VERSION"
+          git config --global user.name "actions-update-version"
           git add ./cmd/version.go
           git commit -m "patch(version): update version command with value $TAG [skip ci]"
           git push     

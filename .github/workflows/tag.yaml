@@ -33,7 +33,8 @@ jobs:
           git config --global user.email "actions@bot"
           git add ./cmd/version.go
           git commit -m "patch(version): update version command with value $VERSION [skip ci]"
-          git tag -a "$VERSION"
+          message=$(git tag -l --format='%(contents)' "$VERSION")
+          git tag -a "$VERSION" -m "$message"
           git push origin --delete "$VERSION"
           git push origin "$VERSION"
 

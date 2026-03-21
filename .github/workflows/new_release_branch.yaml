@@ -140,7 +140,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.FULL_IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ needs.add_version_information.outputs['tag_version'] }}
             type=raw,value=latest
@@ -263,9 +263,6 @@ jobs:
       contents: write
     
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Publish release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -263,6 +263,11 @@ jobs:
       contents: write
     
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.add_version_information.outputs['tag_version'] }}
+
       - name: Publish release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

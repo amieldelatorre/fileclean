@@ -1,0 +1,273 @@
+name: New Release Branch Created
+
+on:
+  push:
+    branches:
+      - "releases/**"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test_on_tag:
+    uses: ./.github/workflows/push.yaml
+
+  add_version_information:
+    needs: [test_on_tag]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      tag_version: ${{ steps.add_version.outputs.tag_version }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Add version information and commit
+        id: add_version
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+          version=$(echo "${{ github.ref_name }}" | cut -d '/' -f 2)
+          sed -i -E "s/^(const version =) (.*)/\1 \"${version}\"/g" ./cmd/version.go
+
+          git add ./cmd/version.go
+          git commit -m "patch(version): update version command with value $VERSION [skip ci]"
+          git push
+          git tag -a "${version}" -m "New tag from branch ${{ github.ref_name }}" && git push origin "${version}"
+
+          echo "tag_version=${version}" >> $GITHUB_OUTPUT
+
+      - name: Create release draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.add_version_information.outputs['tag_version'] }}
+        run: gh release create "$TAG" --title="$TAG" --draft
+
+  build_container_images:
+    needs: [ add_version_information ]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - container-platform-arch: amd64
+            runner: ubuntu-24.04
+          - container-platform-arch: arm64
+            runner: ubuntu-24.04-arm
+    outputs:
+      container-platform-arch-amd64-tags: ${{ steps.output.outputs.container-platform-arch-amd64-tags }}
+      container-platform-arch-arm64-tags: ${{ steps.output.outputs.container-platform-arch-arm64-tags }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.add_version_information.outputs['tag_version'] }}
+      
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ needs.add_version_information.outputs['tag_version'] }}
+            type=raw,value=latest
+          flavor: |
+            latest=false
+            suffix=-${{ matrix.container-platform-arch }}
+
+      - name: Docker Build and Push
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          platforms: linux/${{ matrix.container-platform-arch }}
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          provenance: false
+
+      - name: output
+        id: output
+        run: |
+          tags=(${{ steps.meta.outputs.tags }})
+          echo "${tags[@]}"
+          echo "container-platform-arch-${{ matrix.container-platform-arch }}-tags=${tags[@]}" >> $GITHUB_OUTPUT
+  
+  build_multi_arch_image:
+    needs: [add_version_information, build_container_images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      packages: write
+
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Container metadata unified
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.FULL_IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ needs.add_version_information.outputs['tag_version'] }}
+            type=raw,value=latest
+          flavor: |
+            latest=false
+
+      - name: Create and push multi-platform manifest
+        run: |
+          tags_list_amd64=(${{ needs.build_images.outputs['container-platform-arch-amd64-tags'] }})
+          tags_list_arm64=(${{ needs.build_images.outputs['container-platform-arch-arm64-tags'] }})
+          tags_list_unified=(${{ steps.meta.outputs.tags }})
+
+          cmd=(docker buildx imagetools create)
+          for tag in "${tags_list_unified[@]}"; do
+            cmd+=(--tag "${tag}")
+          done
+
+          cmd+=("${tags_list_amd64[@]}")
+          cmd+=("${tags_list_arm64[@]}")
+          echo "Final command:"
+          echo "    '${cmd[@]}'"
+
+          "${cmd[@]}"
+
+      - name: Inspect image
+        run: |
+          tags_list_unified=(${{ steps.meta.outputs.tags }})
+          echo "Inspecting images"
+          for tag in "${tags_list_unified[@]}"; do
+            echo "docker buildx imagetools inspect ${tag}"
+            docker buildx imagetools inspect "${tag}"
+          done
+
+  create_linux_amd64_executable:
+    needs: [ add_version_information ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.add_version_information.outputs['tag_version'] }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+
+      - name: Create and upload executable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.add_version_information.outputs['tag_version'] }}
+        run: |
+          go build -o fileclean .
+          tar -czvf fileclean_linux_amd64.tar.gz fileclean
+          gh release upload "$TAG" --clobber fileclean_linux_amd64.tar.gz
+
+  create_windows_amd64_executable:
+    needs: [ add_version_information ]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.add_version_information.outputs['tag_version'] }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+
+      - name: Create and upload executable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.add_version_information.outputs['tag_version'] }}
+        run: |
+          go build -o fileclean.exe .
+          Compress-Archive -Path fileclean.exe -DestinationPath fileclean_windows_amd64.zip
+          gh release upload "$env:TAG" --clobber fileclean_windows_amd64.zip
+  
+  create_macos_arm64_executable:
+    needs: [ add_version_information ]
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.add_version_information.outputs['tag_version'] }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+
+      - name: Create and upload executable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.add_version_information.outputs['tag_version'] }}
+        run: |
+          go build -o fileclean .
+          tar -czvf fileclean_darwin_arm64.tar.gz fileclean
+          gh release upload "$TAG" --clobber fileclean_darwin_arm64.tar.gz
+
+  publish-release:
+    needs: 
+      - build_multi_arch_image
+      - create_linux_amd64_executable
+      - create_windows_amd64_executable
+      - create_macos_arm64_executable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.add_version_information.outputs['tag_version'] }}
+        run: gh release edit "$TAG" --draft=false

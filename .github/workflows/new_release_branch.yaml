@@ -111,7 +111,7 @@ jobs:
       - name: output
         id: output
         run: |
-          tags=(${{ steps.meta.outputs.tags }})
+          tags=(${{ steps.metadata.outputs.tags }})
           echo "${tags[@]}"
           echo "container-platform-arch-${{ matrix.container-platform-arch }}-tags=${tags[@]}" >> $GITHUB_OUTPUT
   

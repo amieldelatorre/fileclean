@@ -37,7 +37,7 @@ jobs:
           sed -i -E "s/^(const version =) (.*)/\1 \"${version}\"/g" ./cmd/version.go
 
           git add ./cmd/version.go
-          git commit -m "patch(version): update version command with value $VERSION [skip ci]"
+          git commit -m "patch(version): update version command with value ${version} [skip ci]"
           git push
           git tag -a "${version}" -m "New tag from branch ${{ github.ref_name }}" && git push origin "${version}"
 

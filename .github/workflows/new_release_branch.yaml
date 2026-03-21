@@ -46,7 +46,7 @@ jobs:
       - name: Create release draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.add_version_information.outputs['tag_version'] }}
+          TAG: ${{ steps.add_version.outputs.tag_version }}
         run: gh release create "$TAG" --title="$TAG" --draft
 
   build_container_images:

@@ -254,6 +254,8 @@ jobs:
 
   publish-release:
     needs: 
+      - add_version_information
+      - build_container_images
       - build_multi_arch_image
       - create_linux_amd64_executable
       - create_windows_amd64_executable

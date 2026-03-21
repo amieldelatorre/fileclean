@@ -149,8 +149,8 @@ jobs:
 
       - name: Create and push multi-platform manifest
         run: |
-          tags_list_amd64=(${{ needs.build_images.outputs['container-platform-arch-amd64-tags'] }})
-          tags_list_arm64=(${{ needs.build_images.outputs['container-platform-arch-arm64-tags'] }})
+          tags_list_amd64=(${{ needs.build_container_images.outputs['container-platform-arch-amd64-tags'] }})
+          tags_list_arm64=(${{ needs.build_container_images.outputs['container-platform-arch-arm64-tags'] }})
           tags_list_unified=(${{ steps.meta.outputs.tags }})
 
           cmd=(docker buildx imagetools create)

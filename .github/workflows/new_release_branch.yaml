@@ -102,6 +102,8 @@ jobs:
         uses: docker/build-push-action@v5
         id: push
         with:
+          context: ./
+          file: ./Dockerfile
           platforms: linux/${{ matrix.container-platform-arch }}
           push: true
           tags: ${{ steps.metadata.outputs.tags }}

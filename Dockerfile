@@ -5,7 +5,7 @@ RUN go mod download
 COPY ./ ./
 RUN go build -o fileclean .
 
-FROM alpine:3.23 AS final
+FROM alpine:3.24 AS final
 COPY --from=build /build/fileclean /usr/local/bin/fileclean
 
 ENTRYPOINT ["fileclean"]
